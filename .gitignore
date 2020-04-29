@@ -1,0 +1,41 @@
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Ignore configuration files that may contain sensitive information.
+sites/*/settings*
+
+# Ignore paths that contain user-generated content.
+sites/*/private
+
+// Ignore these files
+sites/*/*settings.*
+sites/launch_checklist.txt
+sites/all/modules/contrib/security_review/file_write_test.*
+sites/all/modules/contrib/security_review/IGNOREME.txt
+sites/sites.php
+sites/example.sites.php
+
+# Ignore files we don't want to track
+tmp
+.well-known
+#*.html
+
+# Ignore Drupal text files
+CHANGELOG.txt
+COPYRIGHT.txt
+INSTALL.mysql.txt
+INSTALL.pgsql.txt
+INSTALL.sqlite.txt
+INSTALL.txt
+LICENSE.txt
+MAINTAINERS.txt
+README.txt
+UPGRADE.txt
+
