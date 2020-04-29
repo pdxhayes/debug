@@ -1,0 +1,118 @@
+<?php
+
+/**
+ * Implements hook_schema
+ */
+function dexp_photos_schema() {
+
+  $schema['dexp_album'] = [
+    'description' => 'TODO: please describe this table!',
+    'fields' => [
+      'id' => [
+        'description' => 'TODO: please describe this field!',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'uid' => [
+        'description' => 'User ID',
+        'type' => 'int',
+        'not null' => TRUE,
+      ],
+      'title' => [
+        'description' => 'TODO: please describe this field!',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => FALSE,
+      ],
+      'description' => [
+        'description' => 'TODO: please describe this field!',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => FALSE,
+      ],
+      'created' => [
+        'description' => 'TODO: please describe this field!',
+        'type' => 'int',
+        'not null' => FALSE,
+      ],
+    ],
+    'primary key' => ['id'],
+  ];
+
+  $schema['dexp_photo'] = [
+    'description' => 'TODO: please describe this table!',
+    'fields' => [
+      'id' => [
+        'description' => 'TODO: please describe this field!',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+      'album_id' => [
+        'description' => 'TODO: please describe this field!',
+        'type' => 'int',
+        'not null' => FALSE,
+      ],
+      'title' => [
+        'description' => 'TODO: please describe this field!',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => FALSE,
+      ],
+      'description' => [
+        'description' => 'TODO: please describe this field!',
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => FALSE,
+      ],
+      'weight' => [
+        'description' => 'TODO: please describe this field!',
+        'type' => 'int',
+        'not null' => FALSE,
+      ],
+      'fid' => [
+        'description' => 'File ID',
+        'type' => 'int',
+        'not null' => FALSE,
+      ],
+      'uid' => [
+        'description' => 'User ID',
+        'type' => 'int',
+        'not null' => FALSE,
+      ],
+      'created' => [
+        'description' => 'TODO: please describe this field!',
+        'type' => 'int',
+        'not null' => FALSE,
+      ],
+    ],
+    'primary key' => ['id'],
+  ];
+
+
+  return $schema;
+
+}
+
+/**
+ * hook_field_schema()
+ */
+function dexp_photos_field_schema($field) {
+
+  $columns = [
+    'data' => [
+      'type' => 'text',
+      'size' => 'big',
+      'not null' => FALSE,
+    ],
+  ];
+
+  $indexes = [];
+
+  return [
+    'columns' => $columns,
+    'indexes' => $indexes,
+  ];
+
+}

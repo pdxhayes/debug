@@ -1,0 +1,807 @@
+<?php
+
+
+define('DEXP_ROOT_API', 'dexp');
+define('DEXP_DEBUG', true);
+
+$dexp_settings = [];
+$dexp_settings_formatters = [];
+
+function dexp_photos_menu() {
+
+
+
+  $items[DEXP_ROOT_API] = [
+    'title' => 'Providing Restful service root endpoint for Photos',
+    'page callback' => 'dexp_photos_handle_rest',
+    'access arguments' => ['access content'],
+    'file' => 'dexp_photos.pages.inc',
+    'type' => MENU_CALLBACK,
+  ];
+
+  return $items;
+}
+
+
+/**
+ * Implement hook_permissions
+ * @return array
+ */
+
+function dexp_photos_permission() {
+  return array(
+    'administer albums' =>  array(
+      'title' => t('Administer albums'),
+      'description' => t('Manage album photo'),
+    ),
+    'create album' =>  array(
+      'title' => t('Create new album'),
+      'description' => t('Create new album'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_info().
+ *
+ */
+function dexp_photos_field_info() {
+  return [
+    // We name our field as the associative name of the array.
+    'dexp_photos' => [
+      'label' => t('Photo Album'),
+      'description' => t('Photo Album'),
+      'default_widget' => 'dexp_photos_widget',
+      'default_formatter' => 'dexp_photos_formatter',
+    ],
+  ];
+}
+
+
+/**
+ * Implements hook_field_is_empty().
+ */
+function dexp_photos_field_is_empty($item, $field) {
+  return empty($item['data']);
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function dexp_photos_field_formatter_info() {
+  return [
+    // This formatter just displays the hex value in the color indicated.
+    'dexp_photos_formatter' => [
+      'label' => t('Photo album formatter'),
+      'field types' => ['dexp_photos'],
+    ],
+  ];
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function dexp_photos_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+
+  global $dexp_settings_formatters;
+
+  $element = [];
+  switch ($display['type']) {
+
+
+    case 'dexp_photos_formatter':
+
+      $htmlId = drupal_html_id('dexp-photos-formatter');
+      $lib = dexp_photo_get_lib();
+
+      foreach ($items as $delta => $item) {
+
+        $element[$delta] = [
+          '#type' => 'html_tag',
+          '#tag' => 'div',
+          '#value' => $item['data'],
+          '#attributes' => [
+            'id' => $htmlId,
+          ],
+          '#attached' => [
+            'js' => $lib['js'],
+            'css' => $lib['css'],
+          ],
+        ];
+
+
+        $value = $item['data'];
+
+        $albumIds = drupal_json_decode($value);
+        $albumResults = [];
+        $ids = [];
+        if(!empty($albumIds)){
+
+          $filter = new stdClass();
+          $where = new stdClass();
+          $where->field = 'id';
+          $where->value = $albumIds;
+          $where->operator = 'IN';
+          $filter->where = [$where];
+          $albums = dexp_photos_get_albums($filter);
+
+          $map = [];
+
+          if(!empty($albums)){
+            foreach ($albums as $album){
+              $map[$album['id']] = $album;
+            }
+          }
+
+          foreach ($albumIds as $aid) {
+            if(isset($map[$aid])){
+              $ids[] = $aid;
+              $albumResults[] = $map[$aid];
+            }
+
+          }
+        }
+
+        $dexp_settings_formatters[] = [
+          'id' => $htmlId,
+          'albums' => $albumResults,
+        ];
+
+        drupal_add_js(array('dexp_photos' => array('formatters' => $dexp_settings_formatters)), 'setting');
+
+
+
+
+      }
+
+
+      break;
+  }
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_widget_info().
+ */
+function dexp_photos_field_widget_info() {
+  return [
+    'dexp_photos_widget' => [
+      'label' => t('Photo album widget'),
+      'field types' => ['dexp_photos'],
+    ],
+  ];
+}
+
+
+function dexp_photo_get_lib(){
+  $module_path = drupal_get_path('module', 'dexp_photos');
+  $lib = [
+    'js' => array(
+      $module_path. '/static/js/runtime~main.a8a9905a.js',
+      $module_path . '/static/js/2.2675aea0.chunk.js',
+      $module_path. '/static/js/main.aad1c8da.chunk.js',
+      $module_path . '/assets/js/main.js',
+    ),
+    'css' => array(
+      $module_path . '/static/css/2.73e73780.chunk.css',
+    ),
+  ];
+
+  return $lib;
+}
+
+/**
+ * Implements hook_field_widget_form().
+ */
+function dexp_photos_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+
+  global $dexp_settings;
+
+  $value = isset($items[$delta]['data']) ? $items[$delta]['data'] : '';
+
+
+  $widget = $element;
+  $widget['#delta'] = $delta;
+
+  $title = isset($element['#title']) ? $element['#title'] : '';
+
+  switch ($instance['widget']['type']) {
+    case 'dexp_photos_widget':
+
+      $lib = dexp_photo_get_lib();
+      $htmlId = drupal_html_id('dexp-photos-widget');
+
+
+      $widget += [
+        '#suffix' => '<div class="form-item"><label>'.$title.'</label><div id="'.$htmlId.'" class="field-dexp-photos"></div></div>',
+        '#attributes' => [
+          'class' => ['edit-field-dexp-photos-widget'],
+          'id' => "$htmlId-textarea"
+        ],
+        '#attached' => [
+          'js' => $lib['js'],
+          'css' => $lib['css'],
+        ],
+      ];
+
+
+
+
+      $albumIds = drupal_json_decode($value);
+      $albumResults = [];
+      $ids = [];
+      if(!empty($albumIds)){
+
+        $filter = new stdClass();
+        $where = new stdClass();
+        $where->field = 'id';
+        $where->value = $albumIds;
+        $where->operator = 'IN';
+        $filter->where = [$where];
+        $albums = dexp_photos_get_albums($filter);
+
+        $map = [];
+
+        if(!empty($albums)){
+          foreach ($albums as $album){
+            $map[$album['id']] = $album;
+          }
+        }
+
+        foreach ($albumIds as $aid) {
+          if(isset($map[$aid])){
+            $ids[] = $aid;
+            $albumResults[] = $map[$aid];
+          }
+
+        }
+      }
+
+
+
+
+      $dexp_settings[] = [
+        'id' =>$htmlId,
+        'albums' => $albumResults,
+      ];
+
+
+
+      drupal_add_js(array('dexp_photos' => array('widgets' => $dexp_settings)), 'setting');
+
+
+      $widget += [
+        '#type' => 'hidden',
+        '#default_value' => json_encode($ids),
+      ];
+
+  }
+
+  $element['data'] = $widget;
+  return $element;
+}
+
+
+
+/**
+ * Implements hook_field_widget_error().
+ */
+function dexp_photos_field_widget_error($element, $error, $form, &$form_state) {
+  switch ($error['error']) {
+    case 'dexp_photos_invalid':
+      form_error($element, $error['message']);
+      break;
+  }
+}
+
+
+
+function dexp_save_upload($form_field_name, $validators = array(), $destination = FALSE, $replace = FILE_EXISTS_RENAME) {
+  global $user;
+  static $upload_cache;
+
+  // Return cached objects without processing since the file will have
+  // already been processed and the paths in _FILES will be invalid.
+  if (isset($upload_cache[$form_field_name])) {
+    return $upload_cache[$form_field_name];
+  }
+
+  // Make sure there's an upload to process.
+  if (empty($_FILES['files']['name'])) {
+    return NULL;
+  }
+
+  // Check for file upload errors and return FALSE if a lower level system
+  // error occurred. For a complete list of errors:
+  // See http://php.net/manual/features.file-upload.errors.php.
+  switch ($_FILES['files']['error']) {
+    case UPLOAD_ERR_INI_SIZE:
+    case UPLOAD_ERR_FORM_SIZE:
+      drupal_set_message(t('The file %file could not be saved, because it exceeds %maxsize, the maximum allowed size for uploads.', array('%file' => $_FILES['files']['name'], '%maxsize' => format_size(file_upload_max_size()))), 'error');
+      return FALSE;
+
+    case UPLOAD_ERR_PARTIAL:
+    case UPLOAD_ERR_NO_FILE:
+      drupal_set_message(t('The file %file could not be saved, because the upload did not complete.', array('%file' => $_FILES['files']['name'])), 'error');
+      return FALSE;
+
+    case UPLOAD_ERR_OK:
+      // Final check that this is a valid upload, if it isn't, use the
+      // default error handler.
+      if (is_uploaded_file($_FILES['files']['tmp_name'])) {
+        break;
+      }
+
+    // Unknown error
+    default:
+      drupal_set_message(t('The file %file could not be saved. An unknown error has occurred.', array('%file' => $_FILES['files']['name'])), 'error');
+      return FALSE;
+  }
+
+  // Begin building file object.
+  $file = new stdClass();
+  $file->uid      = $user->uid;
+  $file->status   = 0;
+  $file->filename = trim(drupal_basename($_FILES['files']['name']), '.');
+  $file->uri      = $_FILES['files']['tmp_name'];
+  $file->filemime = file_get_mimetype($file->filename);
+  $file->filesize = $_FILES['files']['size'];
+  $file->status = FILE_STATUS_PERMANENT;
+
+
+  $extensions = '';
+  if (isset($validators['file_validate_extensions'])) {
+    if (isset($validators['file_validate_extensions'][0])) {
+      // Build the list of non-munged extensions if the caller provided them.
+      $extensions = $validators['file_validate_extensions'][0];
+    }
+    else {
+      // If 'file_validate_extensions' is set and the list is empty then the
+      // caller wants to allow any extension. In this case we have to remove the
+      // validator or else it will reject all extensions.
+      unset($validators['file_validate_extensions']);
+    }
+  }
+  else {
+    // No validator was provided, so add one using the default list.
+    // Build a default non-munged safe list for file_munge_filename().
+    $extensions = 'jpg jpeg gif png txt doc xls pdf ppt pps odt ods odp';
+    $validators['file_validate_extensions'] = array();
+    $validators['file_validate_extensions'][0] = $extensions;
+  }
+
+  if (!empty($extensions)) {
+    // Munge the filename to protect against possible malicious extension hiding
+    // within an unknown file type (ie: filename.html.foo).
+    $file->filename = file_munge_filename($file->filename, $extensions);
+  }
+
+  // Rename potentially executable files, to help prevent exploits (i.e. will
+  // rename filename.php.foo and filename.php to filename.php.foo.txt and
+  // filename.php.txt, respectively). Don't rename if 'allow_insecure_uploads'
+  // evaluates to TRUE.
+  if (!variable_get('allow_insecure_uploads', 0) && preg_match('/\.(php|phar|pl|py|cgi|asp|js)(\.|$)/i', $file->filename) && (substr($file->filename, -4) != '.txt')) {
+    $file->filemime = 'text/plain';
+    // The destination filename will also later be used to create the URI.
+    $file->filename .= '.txt';
+    // The .txt extension may not be in the allowed list of extensions. We have
+    // to add it here or else the file upload will fail.
+    if (!empty($extensions)) {
+      $validators['file_validate_extensions'][0] .= ' txt';
+      drupal_set_message(t('For security reasons, your upload has been renamed to %filename.', array('%filename' => $file->filename)));
+    }
+  }
+
+  // If the destination is not provided, use the temporary directory.
+  if (empty($destination)) {
+    $destination = 'temporary://';
+  }
+
+  // Assert that the destination contains a valid stream.
+  $destination_scheme = file_uri_scheme($destination);
+  if (!$destination_scheme || !file_stream_wrapper_valid_scheme($destination_scheme)) {
+    drupal_set_message(t('The file could not be uploaded, because the destination %destination is invalid.', array('%destination' => $destination)), 'error');
+    return FALSE;
+  }
+
+  $file->source = $form_field_name;
+  // A URI may already have a trailing slash or look like "public://".
+  if (substr($destination, -1) != '/') {
+    $destination .= '/';
+  }
+  try {
+    $file->destination = file_destination($destination . $file->filename, $replace);
+  }
+  catch (RuntimeException $e) {
+    drupal_set_message(t('The file %source could not be uploaded because the name is invalid.', array('%source' => $form_field_name)), 'error');
+    return FALSE;
+  }
+  // If file_destination() returns FALSE then $replace == FILE_EXISTS_ERROR and
+  // there's an existing file so we need to bail.
+  if ($file->destination === FALSE) {
+    drupal_set_message(t('The file %source could not be uploaded because a file by that name already exists in the destination %directory.', array('%source' => $form_field_name, '%directory' => $destination)), 'error');
+    return FALSE;
+  }
+
+  // Add in our check of the file name length.
+  $validators['file_validate_name_length'] = array();
+
+  // Call the validation functions specified by this function's caller.
+  $errors = file_validate($file, $validators);
+
+  // Check for errors.
+  if (!empty($errors)) {
+    $message = t('The specified file %name could not be uploaded.', array('%name' => $file->filename));
+    if (count($errors) > 1) {
+      $message .= theme('item_list', array('items' => $errors));
+    }
+    else {
+      $message .= ' ' . array_pop($errors);
+    }
+    form_set_error($form_field_name, $message);
+    return FALSE;
+  }
+
+  // Move uploaded files from PHP's upload_tmp_dir to Drupal's temporary
+  // directory. This overcomes open_basedir restrictions for future file
+  // operations.
+  $file->uri = $file->destination;
+  if (!drupal_move_uploaded_file($_FILES['files']['tmp_name'], $file->uri)) {
+    form_set_error($form_field_name, t('File upload error. Could not move uploaded file.'));
+    watchdog('file', 'Upload error. Could not move uploaded file %file to destination %destination.', array('%file' => $file->filename, '%destination' => $file->uri));
+    return FALSE;
+  }
+
+  // Set the permissions on the new file.
+  drupal_chmod($file->uri);
+
+  // If we are replacing an existing file re-use its database record.
+  if ($replace == FILE_EXISTS_REPLACE) {
+    $existing_files = file_load_multiple(array(), array('uri' => $file->uri));
+    if (count($existing_files)) {
+      $existing = reset($existing_files);
+      $file->fid = $existing->fid;
+    }
+  }
+
+  // If we made it this far it's safe to record this file in the database.
+  if ($file = file_save($file)) {
+    // Track non-public files in the session if they were uploaded by an
+    // anonymous user. This allows modules such as the File module to only
+    // grant view access to the specific anonymous user who uploaded the file.
+    // See file_file_download().
+    // The 'file_public_schema' variable is used to allow other publicly
+    // accessible file schemes to be treated the same as the public:// scheme
+    // provided by Drupal core and to avoid adding unnecessary data to the
+    // session (and the resulting bypass of the page cache) in those cases. For
+    // security reasons, only schemes that are completely publicly accessible,
+    // with no download restrictions, should be added to this variable. See
+    // file_managed_file_value().
+    if (!$user->uid && !in_array($destination_scheme, variable_get('file_public_schema', array('public')))) {
+      $_SESSION['anonymous_allowed_file_ids'][$file->fid] = $file->fid;
+    }
+    // Add file to the cache.
+    $upload_cache[$form_field_name] = $file;
+    return $file;
+  }
+  return FALSE;
+}
+
+
+/**
+ * Create album
+ * @param $data
+ * @return DatabaseStatementInterface|int
+ * @throws Exception
+ */
+function dexp_photos_create_album($data){
+
+  $id = db_insert('dexp_album')
+  ->fields(array(
+    'title' => $data['title'],
+    'description' => !empty($data['description']) ? $data['description'] : "",
+    'uid' => $data['uid'],
+    'created' => !empty($data['created']) ? $data['created'] : REQUEST_TIME ,
+  ))
+    ->execute();
+
+  return $id;
+
+}
+
+
+/**
+ * Load album by ID
+ * @param $id
+ * @return mixed
+ */
+function dexp_photos_load_album($id){
+
+  $result = db_select('dexp_album', 'a')
+    ->fields('a')
+    ->condition('id', $id)
+    ->execute()
+    ->fetchAssoc();
+
+  return $result;
+}
+
+/**
+ * Get albums
+ * @param $filter
+ * @return array
+ */
+function dexp_photos_get_albums($filter){
+
+  $skip = isset($filter->skip) ? $filter->skip : 0;
+  $limit = isset($filter->limit) ? $filter->limit : 100;
+  $order = isset($filter->order_by) ? $filter->order_by : [];
+  $where = isset($filter->where) ? $filter->where : [];
+
+  $result = db_select('dexp_album', 'a')
+    ->fields('a');
+
+  if(!empty($where)){
+    foreach ($where as $w){
+      $result = $result->condition($w->field, $w->value, isset($w->operator) ? $w->operator : '=');
+    }
+  }
+
+
+  if(!empty($order)){
+    foreach ($order as $od){
+      $result->orderBy($od->field, $od->value);
+    }
+  }
+    $result = $result->range($skip, $limit)
+    ->execute();
+
+  $results = [];
+
+
+  while ($r = $result->fetchAssoc()){
+    $item = $r;
+    $item['count']=  dexp_photos_count_photos($r['id']);
+    $item['photos'] = dexp_photos_load_album_photos($r['id'], 3, 0);
+
+    $results[] = $item;
+  }
+
+  return $results;
+
+}
+
+/**
+ * Update album
+ * @param $id
+ * @param $data
+ * @return DatabaseStatementInterface
+ */
+function dexp_photos_update_album($id, $data){
+  return db_update('dexp_album')
+    ->fields(array(
+      'title' => $data['title'],
+      'description' => !empty($data['description']) ? $data['description'] : "",
+      'uid' => $data['uid'],
+    ))
+    ->condition('id', $id)
+    ->execute();
+}
+
+/**
+ * Delete album by ID
+ * @param $id
+ * @return int
+ */
+function dexp_photos_delete_album($id){
+
+  $deleted =  db_delete('dexp_album')
+    ->condition('id', $id)
+    ->execute();
+
+  if($deleted){
+    //@todo we may design relation in directly schema.
+    db_delete('dexp_photo')
+      ->condition('album_id', $id)
+      ->execute();
+  }
+
+  return $deleted;
+}
+
+/**
+ * Get photo counts
+ * @param $id
+ * @return mixed
+ */
+
+function dexp_photos_count_photos($id){
+
+  $query = db_select('dexp_photo', 'p')
+    ->condition('album_id', $id);
+
+  $num_rows = $query->countQuery()->execute()->fetchField();
+
+
+  return $num_rows;
+}
+
+/**
+ * Get album photos
+ * @param $id
+ * @param $limit
+ * @param $skip
+ * @return array
+ */
+function dexp_photos_load_album_photos($id, $limit, $skip){
+  $result = db_select('dexp_photo', 'p')
+    ->fields('p')
+    ->condition('album_id', $id);
+
+  $result->leftJoin('file_managed', 'f', 'f.fid = p.fid');
+  $result->fields('f');
+
+  $result = $result
+    ->orderBy('weight', 'ASC')
+    ->range($skip, $limit)
+    ->execute();
+
+
+  $items = array();
+
+
+  while ($r = $result->fetchAssoc()){
+
+    $item = array(
+      'id' => $r['id'],
+      'fid' => $r['fid'],
+      'album_id' => $r['album_id'],
+      'weight' => $r['weight'],
+      'uid' => $r['uid'],
+      'title' => $r['title'],
+      'description' => $r['description'],
+      'created' => $r['created'],
+      'file' => array(
+        'fid' => $r['fid'],
+        'filename' => $r['filename'],
+        'uri' => $r['uri'],
+        'thumbnail' => dexp_create_image_url($r['uri'], 'thumbnail'),
+        'preview' => dexp_create_image_url($r['uri']),
+        'filesize' => $r['filesize'],
+        'filemime' => $r['filemime'],
+      )
+    );
+
+    $items[] = $item;
+  }
+
+  return $items;
+}
+
+
+/**
+ * Create image url
+ * @param $uri
+ * @param null $style
+ * @return bool|string
+ */
+function dexp_create_image_url($uri, $style = NULL) {
+
+  if(empty($style)){
+    return file_create_url($uri);
+  }
+  $derivative_uri = image_style_path($style, $uri);
+  $success        = file_exists($derivative_uri) || image_style_create_derivative(image_style_load($style), $uri, $derivative_uri);
+  $new_image_url  = file_create_url($derivative_uri);
+
+  return $new_image_url;
+
+}
+
+/**
+ * Update photo
+ * @param $id
+ * @param $data
+ * @return DatabaseStatementInterface
+ */
+
+function dexp_photos_update_photo($id, $data){
+
+  return db_update('dexp_photo')
+    ->fields(array(
+      'title' => $data['title'],
+      'fid' => $data['fid'],
+      'description' => $data['description'],
+      'album_id' => $data['album_id'],
+      'weight' => $data['weight'],
+    ))
+    ->condition('id', $id)
+    ->execute();
+}
+
+
+function dexp_photo_get_max_photo_weight(){
+
+  return db_query("SELECT MAX(weight) FROM {dexp_photo}")->fetchField();
+}
+
+/**
+ * Create photo
+ * @param $data
+ * @return DatabaseStatementInterface|int
+ * @throws Exception
+ */
+function dexp_photos_create_photo($data){
+
+
+
+  $id = db_insert('dexp_photo')
+    ->fields(array(
+      'title' => $data['title'],
+      'album_id' => $data['album_id'],
+      'description' => !empty($data['description']) ? $data['description'] : "",
+      'uid' => $data['uid'],
+      'fid' => $data['fid'],
+      'weight' => isset($data['weight']) ? $data['weight'] : dexp_photo_get_max_photo_weight() + 1,
+      'created' => !empty($data['created']) ? $data['created'] : REQUEST_TIME ,
+    ))
+    ->execute();
+
+  return $id;
+}
+
+
+/**
+ * Load photo
+ * @param $id
+ * @return mixed
+ */
+function dexp_photos_load_photo($id){
+
+  $result = db_select('dexp_photo', 'p')
+    ->fields('p')
+    ->condition('id', $id)
+    ->execute()
+    ->fetchAssoc();
+
+  return $result;
+}
+
+
+
+
+/**
+ * Delete photo
+ * @param $id
+ * @return int
+ */
+
+function dexp_photos_delete_photo($id){
+
+  return db_delete('dexp_photo')
+    ->condition('id', $id)
+    ->execute();
+}
+
+
+function dexp_photos_update_photos_weight($items){
+
+  $ids = [];
+
+  foreach ($items as $item) {
+
+    $id = db_update('dexp_photo')
+      ->fields(array(
+        'weight' => $item['weight'],
+      ))
+      ->condition('id', $item['id'])
+      ->execute();
+
+    if($id){
+      $ids[] = $id;
+    }
+  }
+
+  return $ids;
+}

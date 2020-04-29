@@ -1,0 +1,44 @@
+<?php
+
+/**
+ * Implement hook_ds_fields_info
+ */
+function dexp_evolve_ds_fields_info($entity_type) {
+	$fields['read_more_icon'] = array(
+		'title' => t('Read more icon'),
+		'field_type' => DS_FIELD_TYPE_FUNCTION,
+		'function' => '_dexp_evolve_render_read_more_icon_field',
+		'properties' => array(
+	      'settings' => array(
+	        'link icon' => array('type' => 'textfield', 'description' => t('Font icon class. Example: fa fa-link')),
+	      ),
+	      'default' => array('link icon' => 'fa fa-link'),
+	    ),
+	);
+	return array('node' => $fields);
+}
+
+function _dexp_evolve_render_read_more_icon_field($field){
+	$settings = isset($field['formatter_settings']) ? $field['formatter_settings'] : array();
+  	$settings += $field['properties']['default'];
+	return l('<span class="' . $settings['link icon'] . '"></span>', 'node/' . $field['entity']->nid, 
+		array(
+			'html' => true,
+			'attributes' => array('class' => 'read-more-icon'),
+		)
+	);
+}
+
+/**
+ * Implements hook_ds_field_settings_form().
+ */
+function dexp_evolve_ds_field_settings_form($field) {
+  return ds_ds_field_settings_form($field);
+}
+
+/**
+ * Implements hook_ds_field_format_summary().
+ */
+function dexp_evolve_ds_field_format_summary($field) {
+  return ds_ds_field_format_summary($field);
+}

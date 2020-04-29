@@ -1,0 +1,30 @@
+.flickr-widget a {
+    float: left;
+    height: 60px;
+    margin-bottom: 4px;
+    margin-right: 4px;
+    width: 60px;
+    border:solid 3px #FFF;
+}
+.flickr-widget img {
+    display: block;
+    width: 100%;
+    height:auto;
+    display: block;
+    -webkit-transition: opacity 0.2s ease-in-out;
+		-moz-transition: opacity 0.2s ease-in-out;
+		-ms-transition: opacity 0.2s ease-in-out;
+		-o-transition: opacity 0.2s ease-in-out;
+		transition: opacity 0.2s ease-in-out;
+}
+.flickr-widget a:hover {
+  border:solid 3px #21C2F8;
+}
+.flickr-widget a:hover img {
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=60)";
+		filter: alpha(opacity=60);
+		-moz-opacity: 0.6;
+		-khtml-opacity: 0.6;
+		opacity: 0.6;
+    
+}

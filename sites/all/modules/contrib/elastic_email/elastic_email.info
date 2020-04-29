@@ -1,0 +1,18 @@
+name = Elastic Email
+core = 7.x
+package = Mail
+description = Sends Drupal email via the Elastic Email service.
+
+configure = admin/config/system/elastic_email
+
+dependencies[] = mailsystem
+dependencies[] = date
+
+files[] = lib/elastic_email.mail.inc
+files[] = lib/ElasticEmail.inc
+
+; Information added by Drupal.org packaging script on 2018-04-09
+version = "7.x-2.3"
+core = "7.x"
+project = "elastic_email"
+datestamp = "1523269384"

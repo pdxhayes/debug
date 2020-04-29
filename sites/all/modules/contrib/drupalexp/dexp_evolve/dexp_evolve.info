@@ -1,0 +1,5 @@
+name = Dexp Evolve
+description = "Scaffold module for Evolve theme"
+core = 7.x
+package = DrupalExp
+dependencies[] = ds

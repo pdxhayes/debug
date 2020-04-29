@@ -1,0 +1,10 @@
+name = User One
+description = Provide limited access to user one account even from administrators
+core = 7.x
+
+; Information added by Drupal.org packaging script on 2016-08-15
+version = "7.x-1.0-beta1+0-dev"
+core = "7.x"
+project = "userone"
+datestamp = "1471252744"
+

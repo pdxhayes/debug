@@ -1,0 +1,4 @@
+name = Dexp Photos
+description = "Power react photos for Drupal"
+package = DrupalExp
+core = 7.x
